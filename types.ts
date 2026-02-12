@@ -8,7 +8,8 @@ export enum ViewState {
   STUDY_FLASHCARDS = 'STUDY_FLASHCARDS',
   STUDY_QUIZ = 'STUDY_QUIZ',
   ANALYTICS = 'ANALYTICS',
-  PROFILE = 'PROFILE'
+  PROFILE = 'PROFILE',
+  CALENDAR = 'CALENDAR'
 }
 
 export enum MaterialStatus {
@@ -45,6 +46,7 @@ export interface QuizResult {
 export interface LectureMaterial {
   id: string;
   title: string;
+  examId?: string; // Link to a specific exam
   dateAdded: string;
   status: MaterialStatus;
   summary: string;
@@ -56,11 +58,17 @@ export interface LectureMaterial {
   studyMinutes?: number;
 }
 
+export interface Exam {
+  id: string;
+  title: string; // e.g., "Midterm", "Final", "Exam 1"
+  date: string; // ISO Date YYYY-MM-DD
+}
+
 export interface Course {
   id: string;
   name: string;
   instructor?: string;
-  examDate?: string;
+  exams: Exam[]; // Replaced single examDate with array
   color: string;
   materials: LectureMaterial[];
 }

@@ -23,11 +23,13 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, stats, onStartSession })
   const activeCourse = courses.find(c => c.materials.some(m => m.status === MaterialStatus.READY));
   const readyMaterial = activeCourse?.materials.find(m => m.status === MaterialStatus.READY);
 
-  // Logic for nearest upcoming exam
-  const upcomingExam = courses
-    .filter(c => c.examDate)
-    .sort((a, b) => new Date(a.examDate!).getTime() - new Date(b.examDate!).getTime())
-    .find(c => new Date(c.examDate!).getTime() >= new Date().setHours(0,0,0,0));
+  // Logic for nearest upcoming exam (Look through all exams in all courses)
+  const allExams = courses.flatMap(c => c.exams.map(e => ({...e, courseName: c.name})));
+  
+  const upcomingExam = allExams
+    .filter(e => e.date)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .find(e => new Date(e.date).getTime() >= new Date().setHours(0,0,0,0));
 
   const getDaysUntil = (dateStr?: string) => {
     if (!dateStr) return 0;
@@ -35,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, stats, onStartSession })
     return Math.ceil(diff / (1000 * 3600 * 24));
   };
 
-  const daysUntilExam = upcomingExam ? getDaysUntil(upcomingExam.examDate) : 0;
+  const daysUntilExam = upcomingExam ? getDaysUntil(upcomingExam.date) : 0;
   
   // Collect all weak topics
   const weakTopicsList = courses.flatMap(c => 
@@ -57,7 +59,7 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, stats, onStartSession })
             {upcomingExam && (
                 <div className="flex items-center space-x-2 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium border border-indigo-100">
                     <GraduationCap size={16} />
-                    <span>{upcomingExam.name} Exam: {daysUntilExam} days</span>
+                    <span>{upcomingExam.courseName} - {upcomingExam.title}: {daysUntilExam} days</span>
                 </div>
             )}
             
@@ -105,7 +107,9 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, stats, onStartSession })
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{activeCourse.name}</span>
                   <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                  <span className="text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Exam: {activeCourse.examDate || 'No date'}</span>
+                  {upcomingExam && upcomingExam.courseName === activeCourse.name && (
+                      <span className="text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{upcomingExam.title}: {upcomingExam.date}</span>
+                  )}
                 </div>
                 <h3 className="text-xl font-bold text-slate-900">{readyMaterial.title}</h3>
                 <div className="flex flex-wrap gap-2">

@@ -11,11 +11,12 @@ import CourseForm from './components/CourseForm';
 import CourseDetailView from './components/CourseDetailView';
 import AnalyticsView from './components/AnalyticsView';
 import ProfileView from './components/ProfileView';
+import CalendarView from './components/CalendarView';
 import { ViewState, Course, LectureMaterial, MaterialStatus } from './types';
 import { MOCK_COURSES } from './constants';
 import { generateStudyPack } from './services/geminiService';
 
-const STORAGE_KEY = 'medoraGPT_courses_v1';
+const STORAGE_KEY = 'medoraGPT_courses_v2'; // Bumped version due to schema change
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -103,7 +104,7 @@ const AppContent: React.FC = () => {
             id: Math.random().toString(36).substr(2, 9),
             name: courseData.name || 'New Course',
             instructor: courseData.instructor || '',
-            examDate: courseData.examDate || '',
+            exams: courseData.exams || [],
             color: courseData.color || 'bg-indigo-500',
             materials: []
         };
@@ -201,13 +202,14 @@ const AppContent: React.FC = () => {
       navigate(`/courses/${courseId}`);
   };
 
-  const handleUpload = async (courseId: string, title: string, text: string) => {
+  const handleUpload = async (courseId: string, title: string, text: string, examId?: string) => {
     const newMaterialId = Math.random().toString(36).substr(2, 9);
     try {
       // 1. Create a placeholder material
       const placeholder: LectureMaterial = {
           id: newMaterialId,
           title: title,
+          examId: examId,
           dateAdded: new Date().toISOString().split('T')[0],
           status: MaterialStatus.PROCESSING,
           summary: '',
@@ -349,6 +351,7 @@ const AppContent: React.FC = () => {
     <Layout courses={courses}>
         <Routes>
             <Route path="/" element={<Dashboard courses={courses} stats={dashboardStats} onStartSession={handleStartSession} />} />
+            <Route path="/calendar" element={<CalendarView courses={courses} />} />
             <Route path="/courses" element={
                 <CoursesView 
                     courses={courses} 

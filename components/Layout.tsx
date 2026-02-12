@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, BookOpen, PlusCircle, User, BarChart2, BookMarked } from 'lucide-react';
+import { LayoutDashboard, BookOpen, PlusCircle, User, BarChart2, BookMarked, CalendarDays } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Course } from '../types';
 
@@ -14,6 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children, courses }) => {
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Today' },
+    { path: '/calendar', icon: CalendarDays, label: 'Calendar' },
     { path: '/courses', icon: BookOpen, label: 'Courses' },
     { path: '/upload', icon: PlusCircle, label: 'Upload' },
     { path: '/analytics', icon: BarChart2, label: 'Progress' },
@@ -26,14 +27,16 @@ const Layout: React.FC<LayoutProps> = ({ children, courses }) => {
     return false;
   };
 
-  // Find nearest upcoming exam
-  const upcomingExam = courses
-    .filter(c => c.examDate)
-    .sort((a, b) => new Date(a.examDate!).getTime() - new Date(b.examDate!).getTime())
-    .find(c => new Date(c.examDate!).getTime() >= new Date().setHours(0,0,0,0));
+  // Find nearest upcoming exam across all courses/exams
+  const allExams = courses.flatMap(c => c.exams.map(e => ({ ...e, courseName: c.name })));
+  
+  const upcomingExam = allExams
+    .filter(e => e.date)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .find(e => new Date(e.date).getTime() >= new Date().setHours(0,0,0,0));
 
   const daysUntilExam = upcomingExam 
-    ? Math.ceil((new Date(upcomingExam.examDate!).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) 
+    ? Math.ceil((new Date(upcomingExam.date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) 
     : 0;
 
   return (
@@ -68,8 +71,9 @@ const Layout: React.FC<LayoutProps> = ({ children, courses }) => {
             <div className="p-4 border-t border-slate-100">
             <div className="bg-indigo-50 rounded-xl p-4">
                 <p className="text-xs font-semibold text-indigo-600 uppercase mb-1">Exam Countdown</p>
-                <p className="text-sm text-indigo-900 font-medium">{upcomingExam.name}</p>
-                <p className="text-xs text-indigo-500">{daysUntilExam} days remaining</p>
+                <p className="text-sm text-indigo-900 font-medium">{upcomingExam.courseName}</p>
+                <p className="text-xs text-slate-600 mb-1">{upcomingExam.title}</p>
+                <p className="text-xs text-indigo-500 font-bold">{daysUntilExam} days remaining</p>
             </div>
             </div>
         )}

@@ -59,7 +59,12 @@ const CoursesView: React.FC<CoursesViewProps> = ({
       {/* Course Grid */}
       {filteredCourses.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map(course => (
+          {filteredCourses.map(course => {
+            const nextExam = course.exams
+                ?.filter(e => e.date && new Date(e.date).getTime() >= new Date().setHours(0,0,0,0))
+                ?.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+            
+            return (
             <div key={course.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden relative">
               
               {/* Card Color Header */}
@@ -96,7 +101,7 @@ const CoursesView: React.FC<CoursesViewProps> = ({
                 <div className="mt-auto space-y-3 pt-4 border-t border-slate-50">
                   <div className="flex items-center text-sm text-slate-600">
                     <Calendar size={16} className="mr-2 text-slate-400" />
-                    <span>Exam: <span className="font-medium text-slate-900">{course.examDate || 'Not Set'}</span></span>
+                    <span>Next Exam: <span className="font-medium text-slate-900">{nextExam ? `${nextExam.title} (${nextExam.date})` : 'Not Scheduled'}</span></span>
                   </div>
                   <div className="flex items-center text-sm text-slate-600">
                     <FileText size={16} className="mr-2 text-slate-400" />
@@ -141,7 +146,7 @@ const CoursesView: React.FC<CoursesViewProps> = ({
               )}
 
             </div>
-          ))}
+          )})}
         </div>
       ) : (
         <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">

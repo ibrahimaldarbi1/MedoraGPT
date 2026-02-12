@@ -5,12 +5,16 @@ export const MOCK_COURSES: Course[] = [
     id: 'c1',
     name: 'Human Anatomy 101',
     instructor: 'Dr. Smith',
-    examDate: '2023-12-15',
+    exams: [
+        { id: 'e1', title: 'Midterm', date: '2023-10-25' },
+        { id: 'e2', title: 'Final Exam', date: '2023-12-15' }
+    ],
     color: 'bg-indigo-500',
     materials: [
       {
         id: 'm1',
         title: 'Lecture 1: The Skeletal System',
+        examId: 'e1',
         dateAdded: '2023-10-01',
         status: MaterialStatus.READY,
         topics: ['Axial Skeleton', 'Appendicular Skeleton', 'Bone Composition'],
@@ -48,6 +52,7 @@ The skeletal system forms the framework of the body, consisting of bones and oth
       {
         id: 'm2',
         title: 'Lecture 2: Muscular System Intro',
+        examId: 'e1',
         dateAdded: '2023-10-05',
         status: MaterialStatus.PROCESSING,
         summary: '',
@@ -62,7 +67,11 @@ The skeletal system forms the framework of the body, consisting of bones and oth
     id: 'c2',
     name: 'Organic Chemistry',
     instructor: 'Prof. Al-Fayed',
-    examDate: '2023-11-20',
+    exams: [
+        { id: 'e3', title: 'First Exam', date: '2023-09-20' },
+        { id: 'e4', title: 'Second Exam', date: '2023-10-30' },
+        { id: 'e5', title: 'Final', date: '2023-12-10' }
+    ],
     color: 'bg-emerald-500',
     materials: []
   }

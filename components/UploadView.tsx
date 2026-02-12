@@ -14,17 +14,27 @@ if (pdf.GlobalWorkerOptions) {
 
 interface UploadViewProps {
   courses: Course[];
-  onUpload: (courseId: string, title: string, text: string) => Promise<void>;
+  onUpload: (courseId: string, title: string, text: string, examId?: string) => Promise<void>;
   preSelectedCourseId?: string | null;
 }
 
 const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedCourseId }) => {
-  const [selectedCourse, setSelectedCourse] = useState<string>(preSelectedCourseId || courses[0]?.id || '');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(preSelectedCourseId || courses[0]?.id || '');
+  const [selectedExamId, setSelectedExamId] = useState<string>('');
+  
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+
+  // Get current course object to access its exams
+  const selectedCourse = courses.find(c => c.id === selectedCourseId);
+
+  // Reset exam selection when course changes
+  useEffect(() => {
+      setSelectedExamId('');
+  }, [selectedCourseId]);
 
   const handleSimulate = async () => {
     if (!title) {
@@ -34,7 +44,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
     setError(null);
     setIsProcessing(true);
     try {
-        await onUpload(selectedCourse, title, text || SAMPLE_TEXT);
+        await onUpload(selectedCourseId, title, text || SAMPLE_TEXT, selectedExamId || undefined);
     } catch (e: any) {
         console.error(e);
         const msg = e.toString();
@@ -106,16 +116,32 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
         
-        {/* Course Select */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Select Course</label>
-          <select 
-            value={selectedCourse} 
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          >
-            {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+        <div className="grid md:grid-cols-2 gap-4">
+            {/* Course Select */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Course</label>
+              <select 
+                value={selectedCourseId} 
+                onChange={(e) => setSelectedCourseId(e.target.value)}
+                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              >
+                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            {/* Exam Select */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Associate with Exam (Optional)</label>
+              <select 
+                value={selectedExamId} 
+                onChange={(e) => setSelectedExamId(e.target.value)}
+                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                disabled={!selectedCourse || !selectedCourse.exams || selectedCourse.exams.length === 0}
+              >
+                <option value="">-- General / No Specific Exam --</option>
+                {selectedCourse?.exams?.map(e => <option key={e.id} value={e.id}>{e.title} ({e.date || 'No Date'})</option>)}
+              </select>
+            </div>
         </div>
 
         {/* Title Input */}
