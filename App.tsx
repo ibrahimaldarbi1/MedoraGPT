@@ -15,6 +15,7 @@ import CalendarView from './components/CalendarView';
 import LoginView from './components/LoginView';
 import SignUpView from './components/SignUpView';
 import OnboardingView from './components/OnboardingView';
+import EditMaterialView from './components/EditMaterialView';
 import ProtectedRoute from './components/ProtectedRoute';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { ViewState, Course, LectureMaterial, MaterialStatus } from './types';
@@ -339,6 +340,10 @@ const AppContent: React.FC = () => {
      const courseId = urlParams.get('courseId');
      return <UploadView courses={courses} onUpload={handleUpload} preSelectedCourseId={courseId} />;
   }
+  
+  const EditMaterialWrapper = () => {
+      return <EditMaterialView courses={courses} onUpdate={handleUpdateMaterial} />;
+  };
 
   const StudyWrapper = () => {
       const { courseId, materialId, mode } = useParams();
@@ -420,6 +425,7 @@ const AppContent: React.FC = () => {
                             <CourseForm initialData={courseToEdit} onSave={handleSaveCourse} onCancel={() => navigate('/courses')} />
                         } />
                         <Route path="/courses/:id" element={<CourseDetailWrapper />} />
+                        <Route path="/courses/:courseId/materials/:materialId/edit" element={<EditMaterialWrapper />} />
                         <Route path="/upload" element={<UploadWrapper />} />
                         <Route path="/analytics" element={<AnalyticsView courses={courses} onStartSession={handleStartSession} />} />
                         <Route path="/profile" element={<ProfileView />} />
