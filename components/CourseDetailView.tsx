@@ -1,20 +1,25 @@
-import React from 'react';
-import { Course, MaterialStatus, ViewState } from '../types';
-import { ChevronLeft, FileText, Brain, HelpCircle, Plus, Calendar, AlertCircle, Layers } from 'lucide-react';
+import React, { useState } from 'react';
+import { Course, LectureMaterial, MaterialStatus, ViewState } from '../types';
+import { ChevronLeft, FileText, Brain, HelpCircle, Plus, Calendar, AlertCircle, Layers, MoreVertical, Edit2, Trash2, X } from 'lucide-react';
 
 interface CourseDetailViewProps {
   course: Course;
   onBack: () => void;
   onAddMaterial: () => void;
   onStartSession: (courseId: string, materialId: string, mode: ViewState) => void;
+  onUpdateMaterial?: (courseId: string, materialId: string, updates: Partial<LectureMaterial>) => void;
+  onDeleteMaterial?: (courseId: string, materialId: string) => void;
 }
 
 const CourseDetailView: React.FC<CourseDetailViewProps> = ({ 
   course, 
   onBack, 
   onAddMaterial,
-  onStartSession 
+  onStartSession,
+  onUpdateMaterial,
+  onDeleteMaterial
 }) => {
+  const [editingMaterial, setEditingMaterial] = useState<LectureMaterial | null>(null);
 
   // Sort exams by date
   const sortedExams = [...course.exams].sort((a, b) => {
@@ -23,21 +28,58 @@ const CourseDetailView: React.FC<CourseDetailViewProps> = ({
       return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
 
-  // Group materials by examId
-  const materialsByExam: Record<string, typeof course.materials> = {};
-  const unassignedMaterials: typeof course.materials = [];
+  // Group materials by examId (one material can be in multiple groups)
+  const materialsByExam: Record<string, LectureMaterial[]> = {};
+  const unassignedMaterials: LectureMaterial[] = [];
 
   course.materials.forEach(mat => {
-      if (mat.examId && course.exams.some(e => e.id === mat.examId)) {
-          if (!materialsByExam[mat.examId]) materialsByExam[mat.examId] = [];
-          materialsByExam[mat.examId].push(mat);
+      const assignedIds = mat.examIds || [];
+      if (assignedIds.length > 0) {
+          // Check if any assigned IDs are valid exams in this course
+          const validAssignments = assignedIds.filter(id => course.exams.some(e => e.id === id));
+          
+          if (validAssignments.length > 0) {
+              validAssignments.forEach(eid => {
+                  if (!materialsByExam[eid]) materialsByExam[eid] = [];
+                  materialsByExam[eid].push(mat);
+              });
+          } else {
+              unassignedMaterials.push(mat);
+          }
       } else {
           unassignedMaterials.push(mat);
       }
   });
 
-  const renderMaterialCard = (material: typeof course.materials[0]) => (
-    <div key={material.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors mb-3">
+  const handleSaveEdit = () => {
+    if (editingMaterial && onUpdateMaterial) {
+        onUpdateMaterial(course.id, editingMaterial.id, {
+            title: editingMaterial.title,
+            examIds: editingMaterial.examIds
+        });
+        setEditingMaterial(null);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+      if (onDeleteMaterial && window.confirm("Are you sure you want to delete this lecture material?")) {
+          onDeleteMaterial(course.id, id);
+          setEditingMaterial(null);
+      }
+  };
+
+  const toggleEditExam = (examId: string) => {
+      if (!editingMaterial) return;
+      const currentIds = editingMaterial.examIds || [];
+      if (currentIds.includes(examId)) {
+          setEditingMaterial({ ...editingMaterial, examIds: currentIds.filter(id => id !== examId) });
+      } else {
+          setEditingMaterial({ ...editingMaterial, examIds: [...currentIds, examId] });
+      }
+  };
+
+  const renderMaterialCard = (material: LectureMaterial) => (
+    <div key={material.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-colors mb-3 group">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         
         {/* Info */}
@@ -52,6 +94,14 @@ const CourseDetailView: React.FC<CourseDetailViewProps> = ({
                     <AlertCircle size={10} /> Error
                 </span>
                 )}
+                {/* Edit Trigger */}
+                <button 
+                  onClick={() => setEditingMaterial(material)}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-indigo-600 transition-all"
+                  title="Edit Material Details"
+                >
+                    <Edit2 size={14} />
+                </button>
             </div>
             <p className="text-sm text-slate-500">Added {material.dateAdded} • {material.topics.length} topics</p>
             {material.quizHistory && material.quizHistory.length > 0 && (
@@ -91,7 +141,7 @@ const CourseDetailView: React.FC<CourseDetailViewProps> = ({
   );
 
   return (
-    <div className="p-6 max-w-5xl mx-auto min-h-screen">
+    <div className="p-6 max-w-5xl mx-auto min-h-screen relative">
       <button 
         onClick={onBack}
         className="flex items-center text-slate-500 hover:text-indigo-600 mb-6 transition-colors"
@@ -169,6 +219,7 @@ const CourseDetailView: React.FC<CourseDetailViewProps> = ({
                                 <p className="text-sm text-slate-500">{exam.date || 'No Date Set'}</p>
                             </div>
                         </div>
+                        {/* Note: Materials can appear multiple times if they are in multiple exams */}
                         {mats.map(renderMaterialCard)}
                     </div>
                 )
@@ -189,6 +240,77 @@ const CourseDetailView: React.FC<CourseDetailViewProps> = ({
                     {unassignedMaterials.map(renderMaterialCard)}
                 </div>
             )}
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingMaterial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-bold text-slate-900">Edit Material</h3>
+                    <button onClick={() => setEditingMaterial(null)} className="text-slate-400 hover:text-slate-600">
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Lecture Title</label>
+                        <input 
+                            className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                            value={editingMaterial.title}
+                            onChange={e => setEditingMaterial({...editingMaterial, title: e.target.value})} 
+                        />
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Assigned Exams</label>
+                        <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2 max-h-40 overflow-y-auto">
+                            {course.exams.map(exam => (
+                                <label key={exam.id} className="flex items-center gap-3 cursor-pointer p-1 hover:bg-slate-100 rounded">
+                                    <input 
+                                        type="checkbox"
+                                        checked={(editingMaterial.examIds || []).includes(exam.id)}
+                                        onChange={() => toggleEditExam(exam.id)}
+                                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                    />
+                                    <div>
+                                        <p className="text-sm font-medium text-slate-700">{exam.title}</p>
+                                        <p className="text-xs text-slate-400">{exam.date || 'No Date'}</p>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                            Select multiple exams if this lecture is relevant for them (e.g. Midterm and Final).
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-8 pt-6 border-t border-slate-100">
+                     <button 
+                        onClick={() => handleDelete(editingMaterial.id)} 
+                        className="flex items-center gap-2 text-red-600 px-4 py-2 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                     >
+                        <Trash2 size={16} />
+                        Delete
+                     </button>
+                     <div className="flex-1"></div>
+                     <button 
+                        onClick={() => setEditingMaterial(null)} 
+                        className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors"
+                     >
+                        Cancel
+                     </button>
+                     <button 
+                        onClick={handleSaveEdit} 
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm transition-colors"
+                     >
+                        Save Changes
+                     </button>
+                </div>
+            </div>
         </div>
       )}
     </div>

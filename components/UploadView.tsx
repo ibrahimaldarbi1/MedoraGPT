@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, Key, File as FileIcon } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, Key, File as FileIcon, Calendar } from 'lucide-react';
 import { Course } from '../types';
 import { SAMPLE_TEXT } from '../constants';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -14,13 +14,13 @@ if (pdf.GlobalWorkerOptions) {
 
 interface UploadViewProps {
   courses: Course[];
-  onUpload: (courseId: string, title: string, text: string, examId?: string) => Promise<void>;
+  onUpload: (courseId: string, title: string, text: string, examIds?: string[]) => Promise<void>;
   preSelectedCourseId?: string | null;
 }
 
 const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedCourseId }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>(preSelectedCourseId || courses[0]?.id || '');
-  const [selectedExamId, setSelectedExamId] = useState<string>('');
+  const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
@@ -33,7 +33,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
 
   // Reset exam selection when course changes
   useEffect(() => {
-      setSelectedExamId('');
+      setSelectedExamIds([]);
   }, [selectedCourseId]);
 
   const handleSimulate = async () => {
@@ -44,7 +44,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
     setError(null);
     setIsProcessing(true);
     try {
-        await onUpload(selectedCourseId, title, text || SAMPLE_TEXT, selectedExamId || undefined);
+        await onUpload(selectedCourseId, title, text || SAMPLE_TEXT, selectedExamIds);
     } catch (e: any) {
         console.error(e);
         const msg = e.toString();
@@ -107,6 +107,14 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
       }
   };
 
+  const toggleExam = (examId: string) => {
+      if (selectedExamIds.includes(examId)) {
+          setSelectedExamIds(selectedExamIds.filter(id => id !== examId));
+      } else {
+          setSelectedExamIds([...selectedExamIds, examId]);
+      }
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="text-center mb-8">
@@ -116,7 +124,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
         
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-6">
             {/* Course Select */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Select Course</label>
@@ -131,16 +139,29 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
 
             {/* Exam Select */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Associate with Exam (Optional)</label>
-              <select 
-                value={selectedExamId} 
-                onChange={(e) => setSelectedExamId(e.target.value)}
-                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
-                disabled={!selectedCourse || !selectedCourse.exams || selectedCourse.exams.length === 0}
-              >
-                <option value="">-- General / No Specific Exam --</option>
-                {selectedCourse?.exams?.map(e => <option key={e.id} value={e.id}>{e.title} ({e.date || 'No Date'})</option>)}
-              </select>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Associate with Exams (Optional)</label>
+              {selectedCourse?.exams && selectedCourse.exams.length > 0 ? (
+                  <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2 max-h-40 overflow-y-auto">
+                      {selectedCourse.exams.map(exam => (
+                          <label key={exam.id} className="flex items-center gap-3 cursor-pointer p-1 hover:bg-slate-100 rounded">
+                              <input 
+                                type="checkbox"
+                                checked={selectedExamIds.includes(exam.id)}
+                                onChange={() => toggleExam(exam.id)}
+                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                              />
+                              <div>
+                                  <p className="text-sm font-medium text-slate-700">{exam.title}</p>
+                                  <p className="text-xs text-slate-400">{exam.date || 'No Date'}</p>
+                              </div>
+                          </label>
+                      ))}
+                  </div>
+              ) : (
+                  <div className="p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-400 text-sm">
+                      No exams configured for this course.
+                  </div>
+              )}
             </div>
         </div>
 

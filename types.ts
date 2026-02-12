@@ -46,7 +46,7 @@ export interface QuizResult {
 export interface LectureMaterial {
   id: string;
   title: string;
-  examId?: string; // Link to a specific exam
+  examIds: string[]; // Changed from single examId to array to support multiple exams
   dateAdded: string;
   status: MaterialStatus;
   summary: string;
@@ -68,7 +68,7 @@ export interface Course {
   id: string;
   name: string;
   instructor?: string;
-  exams: Exam[]; // Replaced single examDate with array
+  exams: Exam[]; 
   color: string;
   materials: LectureMaterial[];
 }

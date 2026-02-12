@@ -14,7 +14,7 @@ export const MOCK_COURSES: Course[] = [
       {
         id: 'm1',
         title: 'Lecture 1: The Skeletal System',
-        examId: 'e1',
+        examIds: ['e1', 'e2'], // This material is relevant for both exams
         dateAdded: '2023-10-01',
         status: MaterialStatus.READY,
         topics: ['Axial Skeleton', 'Appendicular Skeleton', 'Bone Composition'],
@@ -52,7 +52,7 @@ The skeletal system forms the framework of the body, consisting of bones and oth
       {
         id: 'm2',
         title: 'Lecture 2: Muscular System Intro',
-        examId: 'e1',
+        examIds: ['e1'],
         dateAdded: '2023-10-05',
         status: MaterialStatus.PROCESSING,
         summary: '',

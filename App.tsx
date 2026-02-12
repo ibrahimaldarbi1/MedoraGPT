@@ -16,7 +16,7 @@ import { ViewState, Course, LectureMaterial, MaterialStatus } from './types';
 import { MOCK_COURSES } from './constants';
 import { generateStudyPack } from './services/geminiService';
 
-const STORAGE_KEY = 'medoraGPT_courses_v2'; // Bumped version due to schema change
+const STORAGE_KEY = 'medoraGPT_courses_v3'; // Bumped version for multi-exam support
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -121,6 +121,26 @@ const AppContent: React.FC = () => {
       navigate(`/courses/${courseId}`);
   };
 
+  const handleUpdateMaterial = (courseId: string, materialId: string, updates: Partial<LectureMaterial>) => {
+    setCourses(prev => prev.map(c => {
+        if (c.id !== courseId) return c;
+        return {
+            ...c,
+            materials: c.materials.map(m => m.id === materialId ? { ...m, ...updates } : m)
+        };
+    }));
+  };
+
+  const handleDeleteMaterial = (courseId: string, materialId: string) => {
+      setCourses(prev => prev.map(c => {
+          if (c.id !== courseId) return c;
+          return {
+              ...c,
+              materials: c.materials.filter(m => m.id !== materialId)
+          };
+      }));
+  };
+
   // SM-2 Spaced Repetition Logic Implementation
   const handleCardRating = (courseId: string, materialId: string, cardId: string, rating: 'again' | 'hard' | 'good' | 'easy') => {
       setCourses(prevCourses => {
@@ -202,14 +222,14 @@ const AppContent: React.FC = () => {
       navigate(`/courses/${courseId}`);
   };
 
-  const handleUpload = async (courseId: string, title: string, text: string, examId?: string) => {
+  const handleUpload = async (courseId: string, title: string, text: string, examIds: string[] = []) => {
     const newMaterialId = Math.random().toString(36).substr(2, 9);
     try {
       // 1. Create a placeholder material
       const placeholder: LectureMaterial = {
           id: newMaterialId,
           title: title,
-          examId: examId,
+          examIds: examIds,
           dateAdded: new Date().toISOString().split('T')[0],
           status: MaterialStatus.PROCESSING,
           summary: '',
@@ -290,6 +310,8 @@ const AppContent: React.FC = () => {
             onBack={() => navigate('/courses')} 
             onAddMaterial={() => navigate(`/upload?courseId=${course.id}`)}
             onStartSession={handleStartSession}
+            onUpdateMaterial={handleUpdateMaterial}
+            onDeleteMaterial={handleDeleteMaterial}
         />
       );
   };
