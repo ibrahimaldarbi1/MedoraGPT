@@ -1,0 +1,5 @@
+{
+  "name": "medoraGPT",
+  "description": "Transform lecture PDFs into personalized study systems with structured summaries, flashcards, and exam-date driven scheduling.",
+  "requestFramePermissions": []
+}
