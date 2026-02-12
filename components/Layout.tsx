@@ -1,12 +1,14 @@
 import React from 'react';
 import { LayoutDashboard, BookOpen, PlusCircle, User, BarChart2, BookMarked } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Course } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
+  courses: Course[];
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, courses }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,6 +25,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     if (path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
   };
+
+  // Find nearest upcoming exam
+  const upcomingExam = courses
+    .filter(c => c.examDate)
+    .sort((a, b) => new Date(a.examDate!).getTime() - new Date(b.examDate!).getTime())
+    .find(c => new Date(c.examDate!).getTime() >= new Date().setHours(0,0,0,0));
+
+  const daysUntilExam = upcomingExam 
+    ? Math.ceil((new Date(upcomingExam.examDate!).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) 
+    : 0;
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
@@ -52,13 +64,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
-           <div className="bg-indigo-50 rounded-xl p-4">
-              <p className="text-xs font-semibold text-indigo-600 uppercase mb-1">Exam Countdown</p>
-              <p className="text-sm text-indigo-900 font-medium">Anatomy 101</p>
-              <p className="text-xs text-indigo-500">5 days remaining</p>
-           </div>
-        </div>
+        {upcomingExam && (
+            <div className="p-4 border-t border-slate-100">
+            <div className="bg-indigo-50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-indigo-600 uppercase mb-1">Exam Countdown</p>
+                <p className="text-sm text-indigo-900 font-medium">{upcomingExam.name}</p>
+                <p className="text-xs text-indigo-500">{daysUntilExam} days remaining</p>
+            </div>
+            </div>
+        )}
       </aside>
 
       {/* Mobile Bottom Nav */}

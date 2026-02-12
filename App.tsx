@@ -39,6 +39,39 @@ const AppContent: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
   }, [courses]);
 
+  // Calculate Dashboard Statistics
+  const getDashboardStats = () => {
+    let dueReviews = 0;
+    let mastered = 0;
+    let totalCards = 0;
+    let totalMinutes = 0;
+    const now = new Date();
+
+    courses.forEach(c => {
+      c.materials.forEach(m => {
+        totalMinutes += m.studyMinutes || 0;
+        m.flashcards.forEach(f => {
+          totalCards++;
+          if (f.difficulty === 'mastered') mastered++;
+          // Parse ISO date
+          if (new Date(f.nextReview) <= now) dueReviews++;
+        });
+      });
+    });
+
+    const retention = totalCards > 0 ? Math.round((mastered / totalCards) * 100) : 0;
+    const hours = (totalMinutes / 60).toFixed(1);
+    
+    return { 
+        dueReviews: dueReviews.toString(), 
+        mastered: mastered.toString(), 
+        studyHours: hours + 'h', 
+        retention: retention + '%' 
+    };
+  };
+
+  const dashboardStats = getDashboardStats();
+
   const handleStartSession = (courseId: string, materialId: string, mode: ViewState) => {
     let path = '';
     switch(mode) {
@@ -313,9 +346,9 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <Layout>
+    <Layout courses={courses}>
         <Routes>
-            <Route path="/" element={<Dashboard courses={courses} onStartSession={handleStartSession} />} />
+            <Route path="/" element={<Dashboard courses={courses} stats={dashboardStats} onStartSession={handleStartSession} />} />
             <Route path="/courses" element={
                 <CoursesView 
                     courses={courses} 

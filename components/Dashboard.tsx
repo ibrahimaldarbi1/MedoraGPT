@@ -3,16 +3,24 @@ import { ViewState, Course, MaterialStatus } from '../types';
 import { Calendar, Brain, CheckCircle2, ArrowRight, Clock, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+interface DashboardStats {
+    dueReviews: string;
+    mastered: string;
+    studyHours: string;
+    retention: string;
+}
+
 interface DashboardProps {
   courses: Course[];
+  stats: DashboardStats;
   onStartSession: (courseId: string, materialId: string, mode: ViewState) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession }) => {
+const Dashboard: React.FC<DashboardProps> = ({ courses, stats, onStartSession }) => {
   const navigate = useNavigate();
 
   // Logic to find "Due" items
-  const activeCourse = courses[0]; // Simplification for demo
+  const activeCourse = courses.find(c => c.materials.some(m => m.status === MaterialStatus.READY));
   const readyMaterial = activeCourse?.materials.find(m => m.status === MaterialStatus.READY);
 
   // Logic for nearest upcoming exam
@@ -42,7 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession }) => {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Good Morning, Student</h1>
-          <p className="text-slate-500">You have 12 cards due for review today.</p>
+          <p className="text-slate-500">You have {stats.dueReviews} cards due for review today.</p>
         </div>
         <div className="flex items-center gap-3">
             {/* Exam Countdown Pill */}
@@ -64,10 +72,10 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession }) => {
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Due Reviews', value: '12', icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Mastered', value: '145', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Study Time', value: '2.5h', icon: Calendar, color: 'text-violet-600', bg: 'bg-violet-50' },
-          { label: 'Retention', value: '94%', icon: Brain, color: 'text-pink-600', bg: 'bg-pink-50' },
+          { label: 'Due Reviews', value: stats.dueReviews, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Mastered', value: stats.mastered, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Study Time', value: stats.studyHours, icon: Calendar, color: 'text-violet-600', bg: 'bg-violet-50' },
+          { label: 'Retention', value: stats.retention, icon: Brain, color: 'text-pink-600', bg: 'bg-pink-50' },
         ].map((stat) => (
           <div key={stat.label} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center space-x-4">
             <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}>

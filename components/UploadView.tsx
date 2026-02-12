@@ -24,7 +24,6 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
   const [title, setTitle] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showKeySelector, setShowKeySelector] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
 
   const handleSimulate = async () => {
@@ -33,38 +32,20 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
         return;
     }
     setError(null);
-    setShowKeySelector(false);
     setIsProcessing(true);
     try {
         await onUpload(selectedCourse, title, text || SAMPLE_TEXT);
     } catch (e: any) {
+        console.error(e);
         const msg = e.toString();
-        if (msg.includes("Requested entity was not found") || msg.includes("404")) {
-            setError("API Error: The selected API Key may be invalid for this model.");
-            setShowKeySelector(true);
-            try {
-                if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
-                    await (window as any).aistudio.openSelectKey();
-                }
-            } catch (k) {
-                console.error("Could not open key selector", k);
-            }
+        if (msg.includes("404") || msg.includes("not found")) {
+             setError("API Error: Model not found or API key invalid.");
         } else {
             setError("Failed to generate study pack. " + (e.message || "Please check your connection."));
         }
     } finally {
         setIsProcessing(false);
     }
-  };
-
-  const handleChangeKey = async () => {
-      try {
-          if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
-              await (window as any).aistudio.openSelectKey();
-          }
-      } catch (k) {
-          console.error("Could not open key selector", k);
-      }
   };
 
   const extractTextFromPDF = async (file: File) => {
@@ -204,15 +185,6 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
                     <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
                     <div>
                         <p className="font-semibold">{error}</p>
-                        {showKeySelector && (
-                            <button 
-                                onClick={handleChangeKey}
-                                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 rounded-md text-red-600 text-xs font-bold hover:bg-red-50 transition-colors shadow-sm"
-                            >
-                                <Key size={12} />
-                                Change API Key
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>

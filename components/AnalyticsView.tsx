@@ -20,6 +20,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ courses, onStartSession }
   const totalMinutes = courses.reduce((acc, c) => acc + c.materials.reduce((mAcc, m) => mAcc + (m.studyMinutes || 0), 0), 0);
   const studyHours = (totalMinutes / 60).toFixed(1);
 
+  // Calculate Retention Score (Cards Mastered / Total Cards)
+  const masteredCards = courses.reduce((acc, c) => acc + c.materials.reduce((mAcc, m) => mAcc + m.flashcards.filter(f => f.difficulty === 'mastered').length, 0), 0);
+  const retentionScore = totalCards > 0 ? Math.round((masteredCards / totalCards) * 100) : 0;
+
   // Flatten weak topics
   const allWeakTopics = courses.flatMap(c => c.materials.flatMap(m => m.weakTopics.map(t => ({ 
       topic: t, 
@@ -98,10 +102,10 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ courses, onStartSession }
 
          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
             <div className="w-32 h-32 rounded-full border-8 border-indigo-100 border-t-indigo-600 flex items-center justify-center mb-4">
-               <span className="text-3xl font-bold text-indigo-900">84%</span>
+               <span className="text-3xl font-bold text-indigo-900">{retentionScore}%</span>
             </div>
             <h3 className="font-bold text-slate-900">Retention Score</h3>
-            <p className="text-sm text-slate-500 mt-2">Based on your flashcard performance over the last 7 days.</p>
+            <p className="text-sm text-slate-500 mt-2">Percentage of mastered flashcards.</p>
          </div>
       </div>
     </div>
