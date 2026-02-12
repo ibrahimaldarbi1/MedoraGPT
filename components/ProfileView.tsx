@@ -9,8 +9,8 @@ const ProfileView: React.FC = () => {
   const navigate = useNavigate();
   const levelInfo = getLevelInfo();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
