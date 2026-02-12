@@ -4,7 +4,7 @@ import { CheckCircle2, XCircle, ChevronRight, HelpCircle } from 'lucide-react';
 
 interface QuizViewProps {
   questions: MCQ[];
-  onComplete: () => void;
+  onComplete: (score: number, total: number) => void;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
@@ -22,8 +22,9 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
   const handleSubmit = () => {
     if (selectedOption === null) return;
     setIsSubmitted(true);
-    if (selectedOption === currentQ.correctIndex) {
-        setScore(score + 1);
+    const isCorrect = selectedOption === currentQ.correctIndex;
+    if (isCorrect) {
+        setScore(prev => prev + 1);
     }
   };
 
@@ -33,7 +34,12 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
         setSelectedOption(null);
         setIsSubmitted(false);
     } else {
-        onComplete();
+        // Quiz Finished
+        // Use the current score state + 1 if the last one was just submitted and correct? 
+        // No, score is updated in handleSubmit.
+        // Wait, if I'm on the last question, handleNext is called. 
+        // Score is up to date because handleSubmit happened before "Finish Quiz" button was clicked.
+        onComplete(score, questions.length);
     }
   };
 

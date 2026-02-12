@@ -5,9 +5,10 @@ import { RotateCw, Check, X } from 'lucide-react';
 interface FlashcardViewProps {
   cards: Flashcard[];
   onComplete: () => void;
+  onRateCard?: (cardId: string, rating: 'again' | 'hard' | 'good' | 'easy') => void;
 }
 
-const FlashcardView: React.FC<FlashcardViewProps> = ({ cards, onComplete }) => {
+const FlashcardView: React.FC<FlashcardViewProps> = ({ cards, onComplete, onRateCard }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -17,7 +18,11 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ cards, onComplete }) => {
 
   const currentCard = cards[currentIndex];
 
-  const handleNext = () => {
+  const handleRating = (rating: 'again' | 'hard' | 'good' | 'easy') => {
+    if (onRateCard) {
+        onRateCard(currentCard.id, rating);
+    }
+    
     setIsFlipped(false);
     setTimeout(() => {
       if (currentIndex < cards.length - 1) {
@@ -48,33 +53,33 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ cards, onComplete }) => {
           {/* Front */}
           <div className="absolute inset-0 bg-white rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center justify-center p-8 backface-hidden" style={{ backfaceVisibility: 'hidden' }}>
              <span className="text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Question</span>
-             <h3 className="text-2xl font-medium text-slate-800 leading-relaxed">{currentCard.front}</h3>
+             <h3 className="text-2xl font-medium text-slate-800 leading-relaxed select-none">{currentCard.front}</h3>
              <p className="text-xs text-slate-400 absolute bottom-6">Tap to flip</p>
           </div>
 
           {/* Back */}
           <div className="absolute inset-0 bg-indigo-50 rounded-2xl shadow-xl border border-indigo-100 flex flex-col items-center justify-center p-8 backface-hidden" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
              <span className="text-xs font-bold text-indigo-400 uppercase mb-4 tracking-wider">Answer</span>
-             <h3 className="text-xl font-medium text-indigo-900 leading-relaxed">{currentCard.back}</h3>
+             <h3 className="text-xl font-medium text-indigo-900 leading-relaxed select-none">{currentCard.back}</h3>
           </div>
         </div>
       </div>
 
       {/* Controls (Only show when flipped) */}
       <div className={`mt-8 grid grid-cols-4 gap-3 w-full transition-opacity duration-300 ${isFlipped ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-         <button onClick={handleNext} className="flex flex-col items-center p-3 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 transition-colors">
+         <button onClick={(e) => { e.stopPropagation(); handleRating('again'); }} className="flex flex-col items-center p-3 bg-red-100 text-red-700 rounded-xl hover:bg-red-200 transition-colors">
             <span className="font-bold text-sm">Again</span>
             <span className="text-[10px] opacity-75">&lt; 1 min</span>
          </button>
-         <button onClick={handleNext} className="flex flex-col items-center p-3 bg-orange-100 text-orange-700 rounded-xl hover:bg-orange-200 transition-colors">
+         <button onClick={(e) => { e.stopPropagation(); handleRating('hard'); }} className="flex flex-col items-center p-3 bg-orange-100 text-orange-700 rounded-xl hover:bg-orange-200 transition-colors">
             <span className="font-bold text-sm">Hard</span>
             <span className="text-[10px] opacity-75">2 days</span>
          </button>
-         <button onClick={handleNext} className="flex flex-col items-center p-3 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-colors">
+         <button onClick={(e) => { e.stopPropagation(); handleRating('good'); }} className="flex flex-col items-center p-3 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-colors">
             <span className="font-bold text-sm">Good</span>
             <span className="text-[10px] opacity-75">4 days</span>
          </button>
-         <button onClick={handleNext} className="flex flex-col items-center p-3 bg-emerald-100 text-emerald-700 rounded-xl hover:bg-emerald-200 transition-colors">
+         <button onClick={(e) => { e.stopPropagation(); handleRating('easy'); }} className="flex flex-col items-center p-3 bg-emerald-100 text-emerald-700 rounded-xl hover:bg-emerald-200 transition-colors">
             <span className="font-bold text-sm">Easy</span>
             <span className="text-[10px] opacity-75">7 days</span>
          </button>

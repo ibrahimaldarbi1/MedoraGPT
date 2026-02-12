@@ -1,7 +1,7 @@
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   COURSES = 'COURSES',
-  MANAGE_COURSE = 'MANAGE_COURSE', // Added for Create/Edit
+  MANAGE_COURSE = 'MANAGE_COURSE',
   COURSE_DETAIL = 'COURSE_DETAIL',
   UPLOAD = 'UPLOAD',
   STUDY_SUMMARY = 'STUDY_SUMMARY',
@@ -23,6 +23,9 @@ export interface Flashcard {
   back: string;
   difficulty: 'new' | 'learning' | 'review' | 'mastered';
   nextReview: string; // ISO Date
+  interval?: number; // Days until next review
+  easeFactor?: number; // SM-2 Ease Factor (default 2.5)
+  repetitions?: number; // Consecutive correct answers
 }
 
 export interface MCQ {
@@ -31,6 +34,12 @@ export interface MCQ {
   options: string[];
   correctIndex: number;
   explanation: string;
+}
+
+export interface QuizResult {
+  date: string;
+  score: number;
+  total: number;
 }
 
 export interface LectureMaterial {
@@ -43,6 +52,7 @@ export interface LectureMaterial {
   mcqs: MCQ[];
   topics: string[];
   weakTopics: string[];
+  quizHistory?: QuizResult[];
 }
 
 export interface Course {

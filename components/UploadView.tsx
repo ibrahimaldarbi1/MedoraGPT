@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, FileText, Loader2, Sparkles, AlertCircle, Key } from 'lucide-react';
+import { Upload, FileText, Loader2, Sparkles, AlertCircle, Key, File as FileIcon } from 'lucide-react';
 import { Course, MaterialStatus } from '../types';
 import { SAMPLE_TEXT } from '../constants';
 
@@ -15,6 +15,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showKeySelector, setShowKeySelector] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
 
   const handleSimulate = async () => {
     if (!title) {
@@ -57,6 +58,26 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
       }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (file.type === 'text/plain' || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+              const content = event.target?.result as string;
+              setText(content);
+              setFileName(file.name);
+              if (!title) {
+                  setTitle(file.name.replace(/\.[^/.]+$/, ""));
+              }
+          };
+          reader.readAsText(file);
+      } else {
+          setError("Currently only .txt and .md files are supported for browser-only parsing. For PDFs, copy/paste the text below.");
+      }
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="text-center mb-8">
@@ -90,14 +111,26 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
            />
         </div>
 
-        {/* Upload Zone (Visual Only for MVP) */}
-        <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer group">
+        {/* Upload Zone */}
+        <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors group">
+           <input 
+              type="file" 
+              accept=".txt,.md"
+              onChange={handleFileChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+           />
            <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-             <Upload size={24} />
+             {fileName ? <FileIcon size={24} /> : <Upload size={24} />}
            </div>
-           <p className="font-medium text-slate-900">Click to upload PDF</p>
-           <p className="text-sm text-slate-500 mt-1">or drag and drop here</p>
-           <p className="text-xs text-slate-400 mt-4">(For this demo, please use the text box below)</p>
+           {fileName ? (
+               <p className="font-medium text-slate-900">{fileName}</p>
+           ) : (
+               <>
+                 <p className="font-medium text-slate-900">Click to upload Text File</p>
+                 <p className="text-sm text-slate-500 mt-1">supports .txt, .md</p>
+               </>
+           )}
+           <p className="text-xs text-slate-400 mt-4">(For PDFs, please copy & paste text below)</p>
         </div>
 
         {/* Text Area */}

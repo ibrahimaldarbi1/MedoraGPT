@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import UploadView from './components/UploadView';
@@ -7,13 +7,28 @@ import QuizView from './components/QuizView';
 import SummaryView from './components/SummaryView';
 import CoursesView from './components/CoursesView';
 import CourseForm from './components/CourseForm';
+import CourseDetailView from './components/CourseDetailView';
+import AnalyticsView from './components/AnalyticsView';
+import ProfileView from './components/ProfileView';
 import { ViewState, Course, LectureMaterial, MaterialStatus } from './types';
 import { MOCK_COURSES } from './constants';
 import { generateStudyPack } from './services/geminiService';
 
+const STORAGE_KEY = 'medoraGPT_courses_v1';
+
 const App: React.FC = () => {
+  // Load initial state from local storage or mock
+  const [courses, setCourses] = useState<Course[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : MOCK_COURSES;
+    } catch (e) {
+      console.error("Failed to load state", e);
+      return MOCK_COURSES;
+    }
+  });
+
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
-  const [courses, setCourses] = useState<Course[]>(MOCK_COURSES);
   
   // Active session state
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
@@ -21,6 +36,11 @@ const App: React.FC = () => {
   
   // Edit State
   const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
+
+  // Persistence Effect
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
+  }, [courses]);
 
   // Helper to get active material
   const getActiveData = () => {
@@ -72,14 +92,86 @@ const App: React.FC = () => {
   };
 
   const handleManageMaterials = (courseId: string) => {
-      // In MVP, maybe just go to upload or handle detail view. 
-      // For now, let's assume it goes to Upload with that course selected default
-      // Or we can just keep them on courses view, but the prompt implies management.
-      // Re-using UPLOAD for now as an entry point or DASHBOARD
-      // Ideally we'd have a COURSE_DETAIL view.
-      // Let's go to Upload for now so they can add stuff.
-      setActiveCourseId(courseId); // Set default for upload picker
-      setCurrentView(ViewState.UPLOAD);
+      setActiveCourseId(courseId);
+      setCurrentView(ViewState.COURSE_DETAIL);
+  };
+
+  // SM-2 Spaced Repetition Logic Implementation
+  const handleCardRating = (cardId: string, rating: 'again' | 'hard' | 'good' | 'easy') => {
+      setCourses(prevCourses => {
+          return prevCourses.map(course => {
+              if (course.id !== activeCourseId) return course;
+              return {
+                  ...course,
+                  materials: course.materials.map(mat => {
+                      if (mat.id !== activeMaterialId) return mat;
+                      return {
+                          ...mat,
+                          flashcards: mat.flashcards.map(card => {
+                              if (card.id !== cardId) return card;
+
+                              // Algorithm parameters
+                              let interval = card.interval || 0;
+                              let ease = card.easeFactor || 2.5;
+                              let repetitions = card.repetitions || 0;
+
+                              if (rating === 'again') {
+                                  repetitions = 0;
+                                  interval = 1; // 1 day
+                              } else {
+                                  // Simplified SM-2
+                                  if (repetitions === 0) {
+                                      interval = 1;
+                                  } else if (repetitions === 1) {
+                                      interval = 6;
+                                  } else {
+                                      interval = Math.ceil(interval * ease);
+                                  }
+                                  repetitions++;
+                              }
+
+                              // Adjust Ease
+                              if (rating === 'hard') ease = Math.max(1.3, ease - 0.2);
+                              if (rating === 'easy') ease += 0.15;
+
+                              // Calculate next date
+                              const nextDate = new Date();
+                              nextDate.setDate(nextDate.getDate() + interval);
+
+                              return {
+                                  ...card,
+                                  difficulty: rating === 'again' ? 'learning' : rating === 'easy' ? 'mastered' : 'review',
+                                  nextReview: nextDate.toISOString(),
+                                  interval,
+                                  easeFactor: ease,
+                                  repetitions
+                              };
+                          })
+                      };
+                  })
+              };
+          });
+      });
+  };
+
+  const handleQuizComplete = (score: number, total: number) => {
+      setCourses(prevCourses => {
+          return prevCourses.map(course => {
+              if (course.id !== activeCourseId) return course;
+              return {
+                  ...course,
+                  materials: course.materials.map(mat => {
+                      if (mat.id !== activeMaterialId) return mat;
+                      const history = mat.quizHistory || [];
+                      return {
+                          ...mat,
+                          quizHistory: [...history, { date: new Date().toISOString(), score, total }]
+                      };
+                  })
+              };
+          });
+      });
+      setCurrentView(ViewState.COURSE_DETAIL);
   };
 
   const handleUpload = async (courseId: string, title: string, text: string) => {
@@ -159,7 +251,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    const { material } = getActiveData();
+    const { course, material } = getActiveData();
 
     switch (currentView) {
       case ViewState.DASHBOARD:
@@ -172,11 +264,15 @@ const App: React.FC = () => {
         return material ? (
             <div className="h-full flex flex-col">
                 <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center">
-                    <button onClick={() => setCurrentView(ViewState.DASHBOARD)} className="text-slate-500 hover:text-indigo-600 font-medium">Close</button>
+                    <button onClick={() => setCurrentView(ViewState.COURSE_DETAIL)} className="text-slate-500 hover:text-indigo-600 font-medium">Close</button>
                     <h2 className="font-bold text-slate-800">{material.title}</h2>
                     <div className="w-10"></div>
                 </div>
-                <FlashcardView cards={material.flashcards} onComplete={() => setCurrentView(ViewState.DASHBOARD)} />
+                <FlashcardView 
+                   cards={material.flashcards} 
+                   onRateCard={handleCardRating}
+                   onComplete={() => setCurrentView(ViewState.COURSE_DETAIL)} 
+                />
             </div>
         ) : <div>Error: Material not found</div>;
 
@@ -184,17 +280,20 @@ const App: React.FC = () => {
         return material ? (
              <div className="h-full flex flex-col">
                 <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center">
-                    <button onClick={() => setCurrentView(ViewState.DASHBOARD)} className="text-slate-500 hover:text-indigo-600 font-medium">Exit Quiz</button>
+                    <button onClick={() => setCurrentView(ViewState.COURSE_DETAIL)} className="text-slate-500 hover:text-indigo-600 font-medium">Exit Quiz</button>
                     <h2 className="font-bold text-slate-800">Quiz: {material.title}</h2>
                     <div className="w-10"></div>
                 </div>
-                <QuizView questions={material.mcqs} onComplete={() => setCurrentView(ViewState.DASHBOARD)} />
+                <QuizView 
+                    questions={material.mcqs} 
+                    onComplete={handleQuizComplete} 
+                />
             </div>
         ) : <div>Error: Material not found</div>;
 
       case ViewState.STUDY_SUMMARY:
          return material ? (
-             <SummaryView summary={material.summary} title={material.title} onBack={() => setCurrentView(ViewState.DASHBOARD)} />
+             <SummaryView summary={material.summary} title={material.title} onBack={() => setCurrentView(ViewState.COURSE_DETAIL)} />
          ) : <div>Error</div>;
 
       case ViewState.COURSES:
@@ -216,6 +315,25 @@ const App: React.FC = () => {
               onCancel={() => setCurrentView(ViewState.COURSES)} 
             />
           );
+      
+      case ViewState.COURSE_DETAIL:
+          return course ? (
+             <CourseDetailView 
+                course={course}
+                onBack={() => setCurrentView(ViewState.COURSES)}
+                onAddMaterial={() => {
+                    setActiveCourseId(course.id);
+                    setCurrentView(ViewState.UPLOAD);
+                }}
+                onStartSession={handleStartSession}
+             />
+          ) : <div>Course Not Found</div>;
+
+      case ViewState.ANALYTICS:
+          return <AnalyticsView courses={courses} />;
+      
+      case ViewState.PROFILE:
+          return <ProfileView />;
 
       default:
         return <div className="p-10 text-center">View Not Implemented</div>;
