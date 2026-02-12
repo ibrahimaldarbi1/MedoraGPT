@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, useParams, useLocation, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import UploadView from './components/UploadView';
@@ -399,7 +399,8 @@ const AppContent: React.FC = () => {
   };
 
   const UploadWrapper = () => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const location = useLocation();
+    const urlParams = new URLSearchParams(location.search);
     const courseId = urlParams.get('courseId');
     return <UploadView courses={courses} onUpload={handleUpload} preSelectedCourseId={courseId} />;
   };
