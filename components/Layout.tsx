@@ -1,7 +1,8 @@
 import React from 'react';
-import { LayoutDashboard, BookOpen, PlusCircle, User, BarChart2, BookMarked, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, BookOpen, PlusCircle, User, BarChart2, BookMarked, CalendarDays, Flame } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Course } from '../types';
+import { useUser } from '../contexts/UserContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, courses }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useUser();
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Today' },
@@ -43,11 +45,26 @@ const Layout: React.FC<LayoutProps> = ({ children, courses }) => {
     <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200">
-        <div className="p-6 border-b border-slate-100 flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-             <BookMarked className="text-white w-5 h-5" />
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <BookMarked className="text-white w-5 h-5" />
+            </div>
+            <span className="text-xl font-bold text-slate-800 tracking-tight">medoraGPT</span>
           </div>
-          <span className="text-xl font-bold text-slate-800 tracking-tight">medoraGPT</span>
+        </div>
+        
+        {/* Streak Display in Sidebar */}
+        <div className="px-6 py-4">
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex items-center gap-3">
+                <div className="bg-white p-2 rounded-full shadow-sm">
+                    <Flame className="text-orange-500 fill-orange-500" size={16} />
+                </div>
+                <div>
+                    <p className="text-xs font-bold text-orange-400 uppercase tracking-wide">Current Streak</p>
+                    <p className="text-lg font-bold text-slate-900">{user?.streak || 0} Days</p>
+                </div>
+            </div>
         </div>
         
         <nav className="flex-1 p-4 space-y-2">

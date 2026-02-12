@@ -1,4 +1,35 @@
-import { Course, MaterialStatus } from "./types";
+import { Course, MaterialStatus, Badge } from "./types";
+
+export const BADGE_REGISTRY: Badge[] = [
+  {
+    id: 'first_step',
+    name: 'First Step',
+    description: 'Complete your first study session.',
+    icon: 'Flag',
+    color: 'bg-blue-100 text-blue-600'
+  },
+  {
+    id: 'night_owl',
+    name: 'Night Owl',
+    description: 'Complete a study session after 10 PM.',
+    icon: 'Moon',
+    color: 'bg-indigo-100 text-indigo-600'
+  },
+  {
+    id: 'crammer',
+    name: 'Crammer',
+    description: 'Study 500 cards in a single day.',
+    icon: 'Layers',
+    color: 'bg-orange-100 text-orange-600'
+  },
+  {
+    id: 'quiz_master',
+    name: 'Quiz Master',
+    description: 'Score 100% on a quiz.',
+    icon: 'Award',
+    color: 'bg-emerald-100 text-emerald-600'
+  }
+];
 
 export const MOCK_COURSES: Course[] = [
   {

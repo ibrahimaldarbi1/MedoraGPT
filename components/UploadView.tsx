@@ -3,6 +3,7 @@ import { Upload, FileText, Loader2, Sparkles, AlertCircle, Key, File as FileIcon
 import { Course } from '../types';
 import { SAMPLE_TEXT } from '../constants';
 import * as pdfjsLib from 'pdfjs-dist';
+import { useUser } from '../contexts/UserContext';
 
 // Handle esm.sh export structure which might put the library on .default
 const pdf = (pdfjsLib as any).default || pdfjsLib;
@@ -28,6 +29,8 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
+  const { addXp, updateQuestProgress } = useUser();
+
   // Get current course object to access its exams
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
 
@@ -45,6 +48,8 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
     setIsProcessing(true);
     try {
         await onUpload(selectedCourseId, title, text || SAMPLE_TEXT, selectedExamIds);
+        addXp(100); // +100 XP for Upload
+        updateQuestProgress('UPLOAD_LECTURE', 1);
     } catch (e: any) {
         console.error(e);
         const msg = e.toString();
@@ -120,6 +125,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedC
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Upload Material</h1>
         <p className="text-slate-500 mt-2">Turn your lecture notes or PDFs into a study system in seconds.</p>
+        <p className="text-xs font-bold text-indigo-600 mt-2">+100 XP upon completion</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">

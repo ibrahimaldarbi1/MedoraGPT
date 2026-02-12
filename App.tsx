@@ -12,14 +12,20 @@ import CourseDetailView from './components/CourseDetailView';
 import AnalyticsView from './components/AnalyticsView';
 import ProfileView from './components/ProfileView';
 import CalendarView from './components/CalendarView';
+import LoginView from './components/LoginView';
+import SignUpView from './components/SignUpView';
+import OnboardingView from './components/OnboardingView';
+import ProtectedRoute from './components/ProtectedRoute';
+import { UserProvider, useUser } from './contexts/UserContext';
 import { ViewState, Course, LectureMaterial, MaterialStatus } from './types';
 import { MOCK_COURSES } from './constants';
 import { generateStudyPack } from './services/geminiService';
 
-const STORAGE_KEY = 'medoraGPT_courses_v3'; // Bumped version for multi-exam support
+const STORAGE_KEY = 'medoraGPT_courses_v3'; 
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
+  const { checkBadges } = useUser();
   
   // Load initial state from local storage or mock
   const [courses, setCourses] = useState<Course[]>(() => {
@@ -199,7 +205,19 @@ const AppContent: React.FC = () => {
       });
   };
 
-  const handleStudyComplete = (courseId: string, materialId: string, minutes: number, quizResult?: {score: number, total: number}) => {
+  const handleStudyComplete = (courseId: string, materialId: string, minutes: number, result?: {score?: number, total?: number, cardsReviewed?: number}) => {
+      // Trigger Badge Check
+      const newBadges = checkBadges({
+          cardsReviewed: result?.cardsReviewed,
+          quizScore: result?.score,
+          quizTotal: result?.total
+      });
+      
+      if (newBadges.length > 0) {
+          // Ideally show a toast here, but simple alert for now or silence
+          console.log("Unlocked badges:", newBadges); 
+      }
+
       setCourses(prevCourses => {
           return prevCourses.map(course => {
               if (course.id !== courseId) return course;
@@ -210,9 +228,9 @@ const AppContent: React.FC = () => {
                       const updates: Partial<LectureMaterial> = {
                           studyMinutes: (mat.studyMinutes || 0) + minutes
                       };
-                      if (quizResult) {
+                      if (result?.score !== undefined && result?.total !== undefined) {
                           const history = mat.quizHistory || [];
-                          updates.quizHistory = [...history, { date: new Date().toISOString(), score: quizResult.score, total: quizResult.total }];
+                          updates.quizHistory = [...history, { date: new Date().toISOString(), score: result.score, total: result.total }];
                       }
                       return { ...mat, ...updates };
                   })
@@ -342,7 +360,7 @@ const AppContent: React.FC = () => {
                 <FlashcardView 
                    cards={material.flashcards} 
                    onRateCard={(cardId, rating) => handleCardRating(courseId!, materialId!, cardId, rating)}
-                   onComplete={(minutes) => handleStudyComplete(courseId!, materialId!, minutes)}
+                   onComplete={(minutes, count) => handleStudyComplete(courseId!, materialId!, minutes, {cardsReviewed: count})}
                 />
             </div>
           );
@@ -370,37 +388,57 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <Layout courses={courses}>
-        <Routes>
-            <Route path="/" element={<Dashboard courses={courses} stats={dashboardStats} onStartSession={handleStartSession} />} />
-            <Route path="/calendar" element={<CalendarView courses={courses} />} />
-            <Route path="/courses" element={
-                <CoursesView 
-                    courses={courses} 
-                    onAddCourse={handleAddCourse}
-                    onEditCourse={handleEditCourse}
-                    onDeleteCourse={handleDeleteCourse}
-                    onManageMaterials={handleManageMaterials}
-                />
-            } />
-            <Route path="/courses/new" element={
-                <CourseForm initialData={courseToEdit} onSave={handleSaveCourse} onCancel={() => navigate('/courses')} />
-            } />
-            <Route path="/courses/:id" element={<CourseDetailWrapper />} />
-            <Route path="/upload" element={<UploadWrapper />} />
-            <Route path="/analytics" element={<AnalyticsView courses={courses} onStartSession={handleStartSession} />} />
-            <Route path="/profile" element={<ProfileView />} />
-            <Route path="/study/:courseId/:materialId/:mode" element={<StudyWrapper />} />
-        </Routes>
-    </Layout>
+    <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginView />} />
+        <Route path="/signup" element={<SignUpView />} />
+        
+        {/* Onboarding - Protected but outside layout */}
+        <Route path="/onboarding" element={
+            <ProtectedRoute>
+                <OnboardingView />
+            </ProtectedRoute>
+        } />
+
+        {/* Main Protected Routes */}
+        <Route path="/*" element={
+            <ProtectedRoute>
+                <Layout courses={courses}>
+                    <Routes>
+                        <Route path="/" element={<Dashboard courses={courses} stats={dashboardStats} onStartSession={handleStartSession} />} />
+                        <Route path="/calendar" element={<CalendarView courses={courses} />} />
+                        <Route path="/courses" element={
+                            <CoursesView 
+                                courses={courses} 
+                                onAddCourse={handleAddCourse}
+                                onEditCourse={handleEditCourse}
+                                onDeleteCourse={handleDeleteCourse}
+                                onManageMaterials={handleManageMaterials}
+                            />
+                        } />
+                        <Route path="/courses/new" element={
+                            <CourseForm initialData={courseToEdit} onSave={handleSaveCourse} onCancel={() => navigate('/courses')} />
+                        } />
+                        <Route path="/courses/:id" element={<CourseDetailWrapper />} />
+                        <Route path="/upload" element={<UploadWrapper />} />
+                        <Route path="/analytics" element={<AnalyticsView courses={courses} onStartSession={handleStartSession} />} />
+                        <Route path="/profile" element={<ProfileView />} />
+                        <Route path="/study/:courseId/:materialId/:mode" element={<StudyWrapper />} />
+                    </Routes>
+                </Layout>
+            </ProtectedRoute>
+        } />
+    </Routes>
   );
 };
 
 const App: React.FC = () => {
     return (
-        <HashRouter>
-            <AppContent />
-        </HashRouter>
+        <UserProvider>
+            <HashRouter>
+                <AppContent />
+            </HashRouter>
+        </UserProvider>
     );
 }
 

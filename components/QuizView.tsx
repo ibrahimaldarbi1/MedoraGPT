@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { MCQ } from '../types';
 import { CheckCircle2, XCircle, ChevronRight, HelpCircle } from 'lucide-react';
+import { useUser } from '../contexts/UserContext';
 
 interface QuizViewProps {
   questions: MCQ[];
@@ -13,6 +14,7 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const startTimeRef = useRef<number>(Date.now());
+  const { addXp, updateQuestProgress } = useUser();
 
   if (!questions || questions.length === 0) {
       return <div className="p-8 text-center text-slate-500">No questions available.</div>;
@@ -26,6 +28,7 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
     const isCorrect = selectedOption === currentQ.correctIndex;
     if (isCorrect) {
         setScore(prev => prev + 1);
+        addXp(50); // +50 XP for correct answer
     }
   };
 
@@ -37,6 +40,16 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
     } else {
         const endTime = Date.now();
         const minutes = (endTime - startTimeRef.current) / 60000;
+        
+        // Check for Quest Completion (Score >= 80% or Perfect Score)
+        // Since logic in UserContext might handle both if type matches, we just trigger ACE_QUIZ if > 80%
+        // and if score == total we might trigger generic "ACE_QUIZ" as well if the target is simple.
+        
+        // For simplicity based on context templates:
+        if (score / questions.length >= 0.8) {
+            updateQuestProgress('ACE_QUIZ', 1);
+        }
+
         onComplete(score, questions.length, minutes);
     }
   };
@@ -69,7 +82,12 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
                          className={`w-full text-left p-4 rounded-xl border-2 transition-all flex justify-between items-center ${buttonStyle}`}
                        >
                          <span>{option}</span>
-                         {isSubmitted && idx === currentQ.correctIndex && <CheckCircle2 size={20} className="text-emerald-600" />}
+                         {isSubmitted && idx === currentQ.correctIndex && (
+                             <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-emerald-600">+50 XP</span>
+                                <CheckCircle2 size={20} className="text-emerald-600" />
+                             </div>
+                         )}
                          {isSubmitted && idx === selectedOption && idx !== currentQ.correctIndex && <XCircle size={20} className="text-red-600" />}
                        </button>
                    )

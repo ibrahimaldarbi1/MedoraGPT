@@ -18,6 +18,46 @@ export enum MaterialStatus {
   ERROR = 'Error'
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // Lucide icon name
+  color: string;
+}
+
+export type QuestType = 'REVIEW_CARDS' | 'ACE_QUIZ' | 'UPLOAD_LECTURE';
+
+export interface Quest {
+  id: string;
+  type: QuestType;
+  description: string;
+  target: number;
+  progress: number;
+  completed: boolean;
+  xpReward: number;
+  icon: string;
+}
+
+export interface User {
+  name: string;
+  email: string;
+  university?: string;
+  majors?: string[];
+  studyGoal?: 'Daily' | 'Cramming' | 'Casually';
+  onboardingComplete?: boolean;
+  streak: number;
+  lastStudyDate?: string; // ISO Date YYYY-MM-DD
+  xp: number;
+  badges: string[]; // List of unlocked badge IDs
+  dailyStats: {
+    date: string;
+    cardsStudied: number;
+  };
+  dailyQuests: Quest[];
+  lastQuestGenerationDate: string;
+}
+
 export interface Flashcard {
   id: string;
   front: string;
