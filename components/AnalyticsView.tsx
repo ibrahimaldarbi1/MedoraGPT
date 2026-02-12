@@ -1,19 +1,32 @@
 import React from 'react';
-import { Course } from '../types';
+import { Course, ViewState } from '../types';
 import { BarChart2, TrendingUp, Clock, BookOpen, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface AnalyticsViewProps {
   courses: Course[];
+  onStartSession: (courseId: string, materialId: string, mode: ViewState) => void;
 }
 
-const AnalyticsView: React.FC<AnalyticsViewProps> = ({ courses }) => {
-  // Mock aggregations based on existing data
+const AnalyticsView: React.FC<AnalyticsViewProps> = ({ courses, onStartSession }) => {
+  const navigate = useNavigate();
+
+  // Aggregations
   const totalMaterials = courses.reduce((acc, c) => acc + c.materials.length, 0);
   const totalCards = courses.reduce((acc, c) => acc + c.materials.reduce((mAcc, m) => mAcc + m.flashcards.length, 0), 0);
   const totalQuizzesTaken = courses.reduce((acc, c) => acc + c.materials.reduce((mAcc, m) => mAcc + (m.quizHistory?.length || 0), 0), 0);
   
+  // Calculate total study time
+  const totalMinutes = courses.reduce((acc, c) => acc + c.materials.reduce((mAcc, m) => mAcc + (m.studyMinutes || 0), 0), 0);
+  const studyHours = (totalMinutes / 60).toFixed(1);
+
   // Flatten weak topics
-  const allWeakTopics = courses.flatMap(c => c.materials.flatMap(m => m.weakTopics.map(t => ({ topic: t, course: c.name }))));
+  const allWeakTopics = courses.flatMap(c => c.materials.flatMap(m => m.weakTopics.map(t => ({ 
+      topic: t, 
+      course: c.name,
+      courseId: c.id,
+      materialId: m.id 
+  }))));
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -48,7 +61,7 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ courses }) => {
                <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><Clock size={20}/></div>
                <span className="text-slate-500 text-sm font-medium">Study Hours</span>
             </div>
-            <p className="text-2xl font-bold text-slate-900">4.2h</p> {/* Mock for now */}
+            <p className="text-2xl font-bold text-slate-900">{studyHours}h</p>
          </div>
       </div>
 
@@ -67,7 +80,12 @@ const AnalyticsView: React.FC<AnalyticsViewProps> = ({ courses }) => {
                            <p className="font-medium text-slate-800 text-sm">{item.topic}</p>
                            <p className="text-xs text-red-500">{item.course}</p>
                         </div>
-                        <button className="text-xs font-bold bg-white text-red-600 px-3 py-1 rounded border border-red-200 hover:bg-red-50">Review</button>
+                        <button 
+                            onClick={() => onStartSession(item.courseId, item.materialId, ViewState.STUDY_FLASHCARDS)}
+                            className="text-xs font-bold bg-white text-red-600 px-3 py-1 rounded border border-red-200 hover:bg-red-50"
+                        >
+                            Review
+                        </button>
                      </li>
                   ))}
                </ul>

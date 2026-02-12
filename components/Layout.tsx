@@ -1,20 +1,28 @@
 import React from 'react';
 import { LayoutDashboard, BookOpen, PlusCircle, User, BarChart2, BookMarked } from 'lucide-react';
-import { ViewState } from '../types';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
-  currentView: ViewState;
-  setView: (view: ViewState) => void;
   children: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ currentView, setView, children }) => {
+const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const navItems = [
-    { view: ViewState.DASHBOARD, icon: LayoutDashboard, label: 'Today' },
-    { view: ViewState.COURSES, icon: BookOpen, label: 'Courses' },
-    { view: ViewState.UPLOAD, icon: PlusCircle, label: 'Upload' },
-    { view: ViewState.ANALYTICS, icon: BarChart2, label: 'Progress' },
+    { path: '/', icon: LayoutDashboard, label: 'Today' },
+    { path: '/courses', icon: BookOpen, label: 'Courses' },
+    { path: '/upload', icon: PlusCircle, label: 'Upload' },
+    { path: '/analytics', icon: BarChart2, label: 'Progress' },
+    { path: '/profile', icon: User, label: 'Profile' },
   ];
+
+  const isActive = (path: string) => {
+    if (path === '/' && location.pathname === '/') return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    return false;
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
@@ -31,9 +39,9 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setView, children }) => {
           {navItems.map((item) => (
             <button
               key={item.label}
-              onClick={() => setView(item.view)}
+              onClick={() => navigate(item.path)}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                currentView === item.view
+                isActive(item.path)
                   ? 'bg-indigo-50 text-indigo-600 font-medium shadow-sm'
                   : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
               }`}
@@ -59,12 +67,12 @@ const Layout: React.FC<LayoutProps> = ({ currentView, setView, children }) => {
           {navItems.map((item) => (
             <button
               key={item.label}
-              onClick={() => setView(item.view)}
+              onClick={() => navigate(item.path)}
               className={`flex flex-col items-center p-2 rounded-lg ${
-                currentView === item.view ? 'text-indigo-600' : 'text-slate-400'
+                isActive(item.path) ? 'text-indigo-600' : 'text-slate-400'
               }`}
             >
-              <item.icon size={24} strokeWidth={currentView === item.view ? 2.5 : 2} />
+              <item.icon size={24} strokeWidth={isActive(item.path) ? 2.5 : 2} />
               <span className="text-[10px] font-medium mt-1">{item.label}</span>
             </button>
           ))}

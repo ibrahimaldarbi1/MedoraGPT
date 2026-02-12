@@ -53,6 +53,7 @@ export interface LectureMaterial {
   topics: string[];
   weakTopics: string[];
   quizHistory?: QuizResult[];
+  studyMinutes?: number;
 }
 
 export interface Course {

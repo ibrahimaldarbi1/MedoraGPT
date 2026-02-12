@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MCQ } from '../types';
 import { CheckCircle2, XCircle, ChevronRight, HelpCircle } from 'lucide-react';
 
 interface QuizViewProps {
   questions: MCQ[];
-  onComplete: (score: number, total: number) => void;
+  onComplete: (score: number, total: number, minutesSpent: number) => void;
 }
 
 const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
@@ -12,6 +12,7 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+  const startTimeRef = useRef<number>(Date.now());
 
   if (!questions || questions.length === 0) {
       return <div className="p-8 text-center text-slate-500">No questions available.</div>;
@@ -34,12 +35,9 @@ const QuizView: React.FC<QuizViewProps> = ({ questions, onComplete }) => {
         setSelectedOption(null);
         setIsSubmitted(false);
     } else {
-        // Quiz Finished
-        // Use the current score state + 1 if the last one was just submitted and correct? 
-        // No, score is updated in handleSubmit.
-        // Wait, if I'm on the last question, handleNext is called. 
-        // Score is up to date because handleSubmit happened before "Finish Quiz" button was clicked.
-        onComplete(score, questions.length);
+        const endTime = Date.now();
+        const minutes = (endTime - startTimeRef.current) / 60000;
+        onComplete(score, questions.length, minutes);
     }
   };
 

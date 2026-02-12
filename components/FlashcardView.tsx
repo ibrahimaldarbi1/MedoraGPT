@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Flashcard } from '../types';
 import { RotateCw, Check, X } from 'lucide-react';
 
 interface FlashcardViewProps {
   cards: Flashcard[];
-  onComplete: () => void;
+  onComplete: (minutesSpent: number) => void;
   onRateCard?: (cardId: string, rating: 'again' | 'hard' | 'good' | 'easy') => void;
 }
 
 const FlashcardView: React.FC<FlashcardViewProps> = ({ cards, onComplete, onRateCard }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const startTimeRef = useRef<number>(Date.now());
 
   if (!cards || cards.length === 0) {
       return <div className="p-8 text-center text-slate-500">No flashcards available.</div>;
@@ -28,7 +29,9 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ cards, onComplete, onRate
       if (currentIndex < cards.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
-        onComplete();
+        const endTime = Date.now();
+        const minutes = (endTime - startTimeRef.current) / 60000;
+        onComplete(minutes);
       }
     }, 200);
   };

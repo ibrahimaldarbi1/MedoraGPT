@@ -1,14 +1,16 @@
 import React from 'react';
 import { ViewState, Course, MaterialStatus } from '../types';
 import { Calendar, Brain, CheckCircle2, ArrowRight, Clock, GraduationCap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardProps {
   courses: Course[];
   onStartSession: (courseId: string, materialId: string, mode: ViewState) => void;
-  setView: (view: ViewState) => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession, setView }) => {
+const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession }) => {
+  const navigate = useNavigate();
+
   // Logic to find "Due" items
   const activeCourse = courses[0]; // Simplification for demo
   const readyMaterial = activeCourse?.materials.find(m => m.status === MaterialStatus.READY);
@@ -26,6 +28,13 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession, setView 
   };
 
   const daysUntilExam = upcomingExam ? getDaysUntil(upcomingExam.examDate) : 0;
+  
+  // Collect all weak topics
+  const weakTopicsList = courses.flatMap(c => 
+    c.materials.flatMap(m => 
+      m.weakTopics.map(topic => ({ topic, materialId: m.id, courseId: c.id, courseName: c.name }))
+    )
+  ).slice(0, 3);
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
@@ -118,7 +127,7 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession, setView 
         ) : (
           <div className="text-center p-12 bg-white rounded-2xl border border-dashed border-slate-300">
              <p className="text-slate-500 mb-4">No plan for today. Upload a lecture to get started!</p>
-             <button onClick={() => setView(ViewState.UPLOAD)} className="text-indigo-600 font-medium hover:underline">Upload Lecture PDF</button>
+             <button onClick={() => navigate('/upload')} className="text-indigo-600 font-medium hover:underline">Upload Lecture PDF</button>
           </div>
         )}
       </div>
@@ -127,16 +136,28 @@ const Dashboard: React.FC<DashboardProps> = ({ courses, onStartSession, setView 
       <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
              <h3 className="font-bold text-slate-900 mb-4">Weak Concepts (Prioritized)</h3>
-             <ul className="space-y-3">
-                 <li className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
-                    <span className="text-sm font-medium text-slate-800">Bone Composition (Histology)</span>
-                    <button className="text-xs font-bold text-red-600 hover:underline">Drill Now</button>
-                 </li>
-                 <li className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
-                    <span className="text-sm font-medium text-slate-800">Muscle Contraction Steps</span>
-                    <button className="text-xs font-bold text-orange-600 hover:underline">Drill Now</button>
-                 </li>
-             </ul>
+             {weakTopicsList.length > 0 ? (
+                 <ul className="space-y-3">
+                     {weakTopicsList.map((wt, i) => (
+                        <li key={i} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
+                           <div>
+                               <span className="text-sm font-medium text-slate-800 block">{wt.topic}</span>
+                               <span className="text-xs text-red-400">{wt.courseName}</span>
+                           </div>
+                           <button 
+                             onClick={() => onStartSession(wt.courseId, wt.materialId, ViewState.STUDY_FLASHCARDS)}
+                             className="text-xs font-bold text-red-600 hover:underline"
+                           >
+                             Drill Now
+                           </button>
+                        </li>
+                     ))}
+                 </ul>
+             ) : (
+                 <div className="text-center py-6 text-slate-400 text-sm">
+                     No weak concepts identified yet. Great job!
+                 </div>
+             )}
           </div>
 
           <div className="bg-gradient-to-br from-indigo-900 to-slate-900 p-6 rounded-2xl shadow-lg text-white">

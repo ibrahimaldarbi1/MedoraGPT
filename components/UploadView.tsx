@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, Sparkles, AlertCircle, Key, File as FileIcon } from 'lucide-react';
-import { Course, MaterialStatus } from '../types';
+import { Course } from '../types';
 import { SAMPLE_TEXT } from '../constants';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Handle esm.sh export structure which might put the library on .default
+const pdf = (pdfjsLib as any).default || pdfjsLib;
+
+// Configure worker with a stable CDN URL
+if (pdf.GlobalWorkerOptions) {
+  pdf.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+}
 
 interface UploadViewProps {
   courses: Course[];
   onUpload: (courseId: string, title: string, text: string) => Promise<void>;
+  preSelectedCourseId?: string | null;
 }
 
-const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
-  const [selectedCourse, setSelectedCourse] = useState<string>(courses[0]?.id || '');
+const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload, preSelectedCourseId }) => {
+  const [selectedCourse, setSelectedCourse] = useState<string>(preSelectedCourseId || courses[0]?.id || '');
   const [text, setText] = useState('');
   const [title, setTitle] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,7 +39,6 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
         await onUpload(selectedCourse, title, text || SAMPLE_TEXT);
     } catch (e: any) {
         const msg = e.toString();
-        // Check for specific 404 or "Requested entity was not found" error which implies bad key/model access
         if (msg.includes("Requested entity was not found") || msg.includes("404")) {
             setError("API Error: The selected API Key may be invalid for this model.");
             setShowKeySelector(true);
@@ -58,23 +67,52 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
       }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const extractTextFromPDF = async (file: File) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      // Use resolved pdf object
+      const loadingTask = pdf.getDocument({ data: arrayBuffer });
+      const pdfDoc = await loadingTask.promise;
+      let fullText = '';
+      
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(' ');
+        fullText += pageText + '\n\n';
+      }
+      return fullText;
+    } catch (err) {
+      console.error("PDF Parse Error", err);
+      throw new Error("Could not parse PDF. Please try a different file or copy text manually.");
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      if (file.type === 'text/plain' || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+      setError(null);
+      setFileName(file.name);
+      if (!title) {
+          setTitle(file.name.replace(/\.[^/.]+$/, ""));
+      }
+
+      try {
+        if (file.type === 'application/pdf') {
+          const extracted = await extractTextFromPDF(file);
+          setText(extracted);
+        } else if (file.type === 'text/plain' || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
           const reader = new FileReader();
           reader.onload = (event) => {
-              const content = event.target?.result as string;
-              setText(content);
-              setFileName(file.name);
-              if (!title) {
-                  setTitle(file.name.replace(/\.[^/.]+$/, ""));
-              }
+              setText(event.target?.result as string);
           };
           reader.readAsText(file);
-      } else {
-          setError("Currently only .txt and .md files are supported for browser-only parsing. For PDFs, copy/paste the text below.");
+        } else {
+          setError("Unsupported file type. Please use PDF, TXT, or MD.");
+        }
+      } catch (err: any) {
+        setError(err.message);
       }
   };
 
@@ -82,7 +120,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
     <div className="max-w-2xl mx-auto p-6">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Upload Material</h1>
-        <p className="text-slate-500 mt-2">Turn your lecture notes into a study system in seconds.</p>
+        <p className="text-slate-500 mt-2">Turn your lecture notes or PDFs into a study system in seconds.</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
@@ -115,7 +153,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
         <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors group">
            <input 
               type="file" 
-              accept=".txt,.md"
+              accept=".txt,.md,.pdf"
               onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
            />
@@ -126,11 +164,11 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
                <p className="font-medium text-slate-900">{fileName}</p>
            ) : (
                <>
-                 <p className="font-medium text-slate-900">Click to upload Text File</p>
-                 <p className="text-sm text-slate-500 mt-1">supports .txt, .md</p>
+                 <p className="font-medium text-slate-900">Click to upload PDF or Text</p>
+                 <p className="text-sm text-slate-500 mt-1">supports .pdf, .txt, .md</p>
                </>
            )}
-           <p className="text-xs text-slate-400 mt-4">(For PDFs, please copy & paste text below)</p>
+           <p className="text-xs text-slate-400 mt-4">(PDFs are processed locally in your browser)</p>
         </div>
 
         {/* Text Area */}
@@ -147,7 +185,7 @@ const UploadView: React.FC<UploadViewProps> = ({ courses, onUpload }) => {
              <textarea 
                value={text}
                onChange={(e) => setText(e.target.value)}
-               placeholder="Paste your lecture notes here..."
+               placeholder="Extracted text will appear here..."
                className="w-full h-40 p-3 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm font-mono"
              />
              <div className="flex justify-between items-center mt-2">

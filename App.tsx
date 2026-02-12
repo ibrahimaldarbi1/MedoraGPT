@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { HashRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import UploadView from './components/UploadView';
@@ -16,7 +17,9 @@ import { generateStudyPack } from './services/geminiService';
 
 const STORAGE_KEY = 'medoraGPT_courses_v1';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const navigate = useNavigate();
+  
   // Load initial state from local storage or mock
   const [courses, setCourses] = useState<Course[]>(() => {
     try {
@@ -28,12 +31,6 @@ const App: React.FC = () => {
     }
   });
 
-  const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
-  
-  // Active session state
-  const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
-  const [activeMaterialId, setActiveMaterialId] = useState<string | null>(null);
-  
   // Edit State
   const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
 
@@ -42,27 +39,25 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(courses));
   }, [courses]);
 
-  // Helper to get active material
-  const getActiveData = () => {
-    const course = courses.find(c => c.id === activeCourseId);
-    const material = course?.materials.find(m => m.id === activeMaterialId);
-    return { course, material };
-  };
-
   const handleStartSession = (courseId: string, materialId: string, mode: ViewState) => {
-    setActiveCourseId(courseId);
-    setActiveMaterialId(materialId);
-    setCurrentView(mode);
+    let path = '';
+    switch(mode) {
+        case ViewState.STUDY_FLASHCARDS: path = 'flashcards'; break;
+        case ViewState.STUDY_QUIZ: path = 'quiz'; break;
+        case ViewState.STUDY_SUMMARY: path = 'summary'; break;
+        default: path = 'summary';
+    }
+    navigate(`/study/${courseId}/${materialId}/${path}`);
   };
 
   const handleAddCourse = () => {
     setCourseToEdit(null);
-    setCurrentView(ViewState.MANAGE_COURSE);
+    navigate('/courses/new');
   };
 
   const handleEditCourse = (course: Course) => {
     setCourseToEdit(course);
-    setCurrentView(ViewState.MANAGE_COURSE);
+    navigate('/courses/new');
   };
 
   const handleSaveCourse = (courseData: Partial<Course>) => {
@@ -81,30 +76,26 @@ const App: React.FC = () => {
         };
         setCourses(prev => [...prev, newCourse]);
     }
-    setCurrentView(ViewState.COURSES);
+    navigate('/courses');
   };
 
   const handleDeleteCourse = (courseId: string) => {
     setCourses(prev => prev.filter(c => c.id !== courseId));
-    if (activeCourseId === courseId) {
-        setActiveCourseId(null);
-    }
   };
 
   const handleManageMaterials = (courseId: string) => {
-      setActiveCourseId(courseId);
-      setCurrentView(ViewState.COURSE_DETAIL);
+      navigate(`/courses/${courseId}`);
   };
 
   // SM-2 Spaced Repetition Logic Implementation
-  const handleCardRating = (cardId: string, rating: 'again' | 'hard' | 'good' | 'easy') => {
+  const handleCardRating = (courseId: string, materialId: string, cardId: string, rating: 'again' | 'hard' | 'good' | 'easy') => {
       setCourses(prevCourses => {
           return prevCourses.map(course => {
-              if (course.id !== activeCourseId) return course;
+              if (course.id !== courseId) return course;
               return {
                   ...course,
                   materials: course.materials.map(mat => {
-                      if (mat.id !== activeMaterialId) return mat;
+                      if (mat.id !== materialId) return mat;
                       return {
                           ...mat,
                           flashcards: mat.flashcards.map(card => {
@@ -154,24 +145,27 @@ const App: React.FC = () => {
       });
   };
 
-  const handleQuizComplete = (score: number, total: number) => {
+  const handleStudyComplete = (courseId: string, materialId: string, minutes: number, quizResult?: {score: number, total: number}) => {
       setCourses(prevCourses => {
           return prevCourses.map(course => {
-              if (course.id !== activeCourseId) return course;
+              if (course.id !== courseId) return course;
               return {
                   ...course,
                   materials: course.materials.map(mat => {
-                      if (mat.id !== activeMaterialId) return mat;
-                      const history = mat.quizHistory || [];
-                      return {
-                          ...mat,
-                          quizHistory: [...history, { date: new Date().toISOString(), score, total }]
+                      if (mat.id !== materialId) return mat;
+                      const updates: Partial<LectureMaterial> = {
+                          studyMinutes: (mat.studyMinutes || 0) + minutes
                       };
+                      if (quizResult) {
+                          const history = mat.quizHistory || [];
+                          updates.quizHistory = [...history, { date: new Date().toISOString(), score: quizResult.score, total: quizResult.total }];
+                      }
+                      return { ...mat, ...updates };
                   })
               };
           });
       });
-      setCurrentView(ViewState.COURSE_DETAIL);
+      navigate(`/courses/${courseId}`);
   };
 
   const handleUpload = async (courseId: string, title: string, text: string) => {
@@ -197,7 +191,7 @@ const App: React.FC = () => {
           return c;
       }));
       
-      setCurrentView(ViewState.DASHBOARD);
+      navigate(`/courses/${courseId}`);
 
       // 2. Call Gemini API
       const result = await generateStudyPack(text);
@@ -250,101 +244,106 @@ const App: React.FC = () => {
     }
   };
 
-  const renderContent = () => {
-    const { course, material } = getActiveData();
+  // Wrapper components for routes with params
+  const CourseDetailWrapper = () => {
+      const { id } = useParams();
+      const course = courses.find(c => c.id === id);
+      if (!course) return <div>Course not found</div>;
+      return (
+        <CourseDetailView 
+            course={course} 
+            onBack={() => navigate('/courses')} 
+            onAddMaterial={() => navigate(`/upload?courseId=${course.id}`)}
+            onStartSession={handleStartSession}
+        />
+      );
+  };
 
-    switch (currentView) {
-      case ViewState.DASHBOARD:
-        return <Dashboard courses={courses} onStartSession={handleStartSession} setView={setCurrentView} />;
+  const UploadWrapper = () => {
+     const urlParams = new URLSearchParams(window.location.search);
+     const courseId = urlParams.get('courseId');
+     return <UploadView courses={courses} onUpload={handleUpload} preSelectedCourseId={courseId} />;
+  }
+
+  const StudyWrapper = () => {
+      const { courseId, materialId, mode } = useParams();
+      const course = courses.find(c => c.id === courseId);
+      const material = course?.materials.find(m => m.id === materialId);
       
-      case ViewState.UPLOAD:
-        return <UploadView courses={courses} onUpload={handleUpload} />;
-      
-      case ViewState.STUDY_FLASHCARDS:
-        return material ? (
+      if (!course || !material) return <div>Material not found</div>;
+
+      const onDone = () => navigate(`/courses/${courseId}`);
+
+      if (mode === 'flashcards') {
+          return (
             <div className="h-full flex flex-col">
                 <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center">
-                    <button onClick={() => setCurrentView(ViewState.COURSE_DETAIL)} className="text-slate-500 hover:text-indigo-600 font-medium">Close</button>
+                    <button onClick={onDone} className="text-slate-500 hover:text-indigo-600 font-medium">Close</button>
                     <h2 className="font-bold text-slate-800">{material.title}</h2>
                     <div className="w-10"></div>
                 </div>
                 <FlashcardView 
                    cards={material.flashcards} 
-                   onRateCard={handleCardRating}
-                   onComplete={() => setCurrentView(ViewState.COURSE_DETAIL)} 
+                   onRateCard={(cardId, rating) => handleCardRating(courseId!, materialId!, cardId, rating)}
+                   onComplete={(minutes) => handleStudyComplete(courseId!, materialId!, minutes)}
                 />
             </div>
-        ) : <div>Error: Material not found</div>;
-
-      case ViewState.STUDY_QUIZ:
-        return material ? (
-             <div className="h-full flex flex-col">
+          );
+      }
+      if (mode === 'quiz') {
+          return (
+            <div className="h-full flex flex-col">
                 <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center">
-                    <button onClick={() => setCurrentView(ViewState.COURSE_DETAIL)} className="text-slate-500 hover:text-indigo-600 font-medium">Exit Quiz</button>
+                    <button onClick={onDone} className="text-slate-500 hover:text-indigo-600 font-medium">Exit Quiz</button>
                     <h2 className="font-bold text-slate-800">Quiz: {material.title}</h2>
                     <div className="w-10"></div>
                 </div>
                 <QuizView 
                     questions={material.mcqs} 
-                    onComplete={handleQuizComplete} 
+                    onComplete={(score, total, minutes) => handleStudyComplete(courseId!, materialId!, minutes, {score, total})}
                 />
             </div>
-        ) : <div>Error: Material not found</div>;
-
-      case ViewState.STUDY_SUMMARY:
-         return material ? (
-             <SummaryView summary={material.summary} title={material.title} onBack={() => setCurrentView(ViewState.COURSE_DETAIL)} />
-         ) : <div>Error</div>;
-
-      case ViewState.COURSES:
-          return (
-              <CoursesView 
-                courses={courses} 
-                onAddCourse={handleAddCourse}
-                onEditCourse={handleEditCourse}
-                onDeleteCourse={handleDeleteCourse}
-                onManageMaterials={handleManageMaterials}
-              />
           );
+      }
+      if (mode === 'summary') {
+          return <SummaryView summary={material.summary} title={material.title} onBack={onDone} />;
+      }
 
-      case ViewState.MANAGE_COURSE:
-          return (
-            <CourseForm 
-              initialData={courseToEdit} 
-              onSave={handleSaveCourse} 
-              onCancel={() => setCurrentView(ViewState.COURSES)} 
-            />
-          );
-      
-      case ViewState.COURSE_DETAIL:
-          return course ? (
-             <CourseDetailView 
-                course={course}
-                onBack={() => setCurrentView(ViewState.COURSES)}
-                onAddMaterial={() => {
-                    setActiveCourseId(course.id);
-                    setCurrentView(ViewState.UPLOAD);
-                }}
-                onStartSession={handleStartSession}
-             />
-          ) : <div>Course Not Found</div>;
-
-      case ViewState.ANALYTICS:
-          return <AnalyticsView courses={courses} />;
-      
-      case ViewState.PROFILE:
-          return <ProfileView />;
-
-      default:
-        return <div className="p-10 text-center">View Not Implemented</div>;
-    }
+      return <div>Unknown mode</div>;
   };
 
   return (
-    <Layout currentView={currentView} setView={setCurrentView}>
-      {renderContent()}
+    <Layout>
+        <Routes>
+            <Route path="/" element={<Dashboard courses={courses} onStartSession={handleStartSession} />} />
+            <Route path="/courses" element={
+                <CoursesView 
+                    courses={courses} 
+                    onAddCourse={handleAddCourse}
+                    onEditCourse={handleEditCourse}
+                    onDeleteCourse={handleDeleteCourse}
+                    onManageMaterials={handleManageMaterials}
+                />
+            } />
+            <Route path="/courses/new" element={
+                <CourseForm initialData={courseToEdit} onSave={handleSaveCourse} onCancel={() => navigate('/courses')} />
+            } />
+            <Route path="/courses/:id" element={<CourseDetailWrapper />} />
+            <Route path="/upload" element={<UploadWrapper />} />
+            <Route path="/analytics" element={<AnalyticsView courses={courses} onStartSession={handleStartSession} />} />
+            <Route path="/profile" element={<ProfileView />} />
+            <Route path="/study/:courseId/:materialId/:mode" element={<StudyWrapper />} />
+        </Routes>
     </Layout>
   );
 };
+
+const App: React.FC = () => {
+    return (
+        <HashRouter>
+            <AppContent />
+        </HashRouter>
+    );
+}
 
 export default App;
